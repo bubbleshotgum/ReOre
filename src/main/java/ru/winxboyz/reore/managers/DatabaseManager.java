@@ -58,14 +58,14 @@ public class DatabaseManager {
                     +  "y INTEGER,"
                     +  "z INTEGER"
                     +  ");";
-
-        try(Connection conn = getConnection()) {
-            PreparedStatement stmt = conn.prepareStatement(query);
-            stmt.execute();
-        } catch(SQLException e) {
-            plugin.getLogger().severe("Could not create locations table\n" + e.getErrorCode() + ": " + e.getMessage());
-        }
-
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try(Connection conn = getConnection()) {
+                PreparedStatement stmt = conn.prepareStatement(query);
+                stmt.execute();
+            } catch(SQLException e) {
+                plugin.getLogger().severe("Could not create locations table\n" + e.getErrorCode() + ": " + e.getMessage());
+            }
+        });
         result.complete(null);
         return result;
     }
@@ -73,41 +73,43 @@ public class DatabaseManager {
     public CompletableFuture<List<Location>> fetchLocations() {
         CompletableFuture<List<Location>> locations = new CompletableFuture<>();
         String query = "SELECT * FROM " + tableName + " ;";
-        try(Connection conn = getConnection()) {
-            PreparedStatement stmt = conn.prepareStatement(query);
-            ResultSet rs = stmt.executeQuery();
-            List<Location> locs = new ArrayList<>(0);
-            while(rs.next()) {
-                locs.add(new Location(
-                    Bukkit.getWorld(rs.getString("world")),
-                    rs.getInt("x"), 
-                    rs.getInt("y"),
-                    rs.getInt("z"))
-                );
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try(Connection conn = getConnection()) {
+                PreparedStatement stmt = conn.prepareStatement(query);
+                ResultSet rs = stmt.executeQuery();
+                List<Location> locs = new ArrayList<>(0);
+                while(rs.next()) {
+                    locs.add(new Location(
+                        Bukkit.getWorld(rs.getString("world")),
+                        rs.getInt("x"), 
+                        rs.getInt("y"),
+                        rs.getInt("z"))
+                    );
+                }
+                locations.complete(locs);
+            } catch(SQLException e) {
+                plugin.getLogger().warning("could not fetch locations\n"+e.getErrorCode()+": "+e.getMessage());
+                locations.complete(null);
             }
-            locations.complete(locs);
-        } catch(SQLException e) {
-            plugin.getLogger().warning("could not fetch locations\n"+e.getErrorCode()+": "+e.getMessage());
-            locations.complete(null);
-        }
-
+        });
         return locations;
     }
 
     public CompletableFuture<Void> addLocation(Location loc) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         String query = "INSERT INTO " + tableName + " (world,x,y,z) VALUES (?,?,?,?);";
-        try(Connection conn = getConnection()) {
-            PreparedStatement stmt = conn.prepareStatement(query);
-            stmt.setString(1, loc.getWorld().getName());
-            stmt.setInt(2, loc.blockX());
-            stmt.setInt(3, loc.blockY());
-            stmt.setInt(4, loc.blockZ());
-            stmt.executeUpdate();
-        } catch(SQLException e) {
-            plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
-        }
-
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try(Connection conn = getConnection()) {
+                PreparedStatement stmt = conn.prepareStatement(query);
+                stmt.setString(1, loc.getWorld().getName());
+                stmt.setInt(2, loc.blockX());
+                stmt.setInt(3, loc.blockY());
+                stmt.setInt(4, loc.blockZ());
+                stmt.executeUpdate();
+            } catch(SQLException e) {
+                plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
+            }
+        });
         result.complete(null);
         return result;
     }
@@ -115,20 +117,21 @@ public class DatabaseManager {
     public CompletableFuture<Void> addLocations(List<Location> locs) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         String query = "INSERT INTO " + tableName + " (world,x,y,z) VALUES (?,?,?,?);";
-        try(Connection conn = getConnection()) {
-            PreparedStatement stmt = conn.prepareStatement(query);
-            for(Location loc : locs) {
-                stmt.setString(1, loc.getWorld().getName());
-                stmt.setInt(2, loc.blockX());
-                stmt.setInt(3, loc.blockY());
-                stmt.setInt(4, loc.blockZ());
-                stmt.addBatch();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try(Connection conn = getConnection()) {
+                PreparedStatement stmt = conn.prepareStatement(query);
+                for(Location loc : locs) {
+                    stmt.setString(1, loc.getWorld().getName());
+                    stmt.setInt(2, loc.blockX());
+                    stmt.setInt(3, loc.blockY());
+                    stmt.setInt(4, loc.blockZ());
+                    stmt.addBatch();
+                }
+                plugin.getLogger().info("Added " + stmt.executeBatch().length + " rows");
+            } catch(SQLException e) {
+                plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
             }
-            plugin.getLogger().info("Added " + stmt.executeBatch().length + " rows");
-        } catch(SQLException e) {
-            plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
-        }
-
+        });
         result.complete(null);
         return result;
     }
@@ -136,16 +139,18 @@ public class DatabaseManager {
     public CompletableFuture<Void> removeLocation(Location loc) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         String query = "DELETE FROM " + tableName + " WHERE world = ? AND x = ? AND y = ? AND z = ?;";
-        try(Connection conn = getConnection()) {
-            PreparedStatement stmt = conn.prepareStatement(query);
-            stmt.setString(1, loc.getWorld().getName());
-            stmt.setInt(2, loc.blockX());
-            stmt.setInt(3, loc.blockY());
-            stmt.setInt(4, loc.blockZ());
-            stmt.executeUpdate();
-        } catch(SQLException e) {
-            plugin.getLogger().warning("could not remove a location\n"+e.getErrorCode()+": "+e.getMessage());
-        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try(Connection conn = getConnection()) {
+                PreparedStatement stmt = conn.prepareStatement(query);
+                stmt.setString(1, loc.getWorld().getName());
+                stmt.setInt(2, loc.blockX());
+                stmt.setInt(3, loc.blockY());
+                stmt.setInt(4, loc.blockZ());
+                stmt.executeUpdate();
+            } catch(SQLException e) {
+                plugin.getLogger().warning("could not remove a location\n"+e.getErrorCode()+": "+e.getMessage());
+            }
+        });
 
         result.complete(null);
         return result;
@@ -154,20 +159,21 @@ public class DatabaseManager {
     public CompletableFuture<Void> removeLocations(List<Location> locs) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         String query = "DELETE FROM " + tableName + " WHERE world = ? AND x = ? AND y = ? AND z = ?;";
-        try(Connection conn = getConnection()) {
-            PreparedStatement stmt = conn.prepareStatement(query);
-            for(Location loc : locs) {
-                stmt.setString(1, loc.getWorld().getName());
-                stmt.setInt(2, loc.blockX());
-                stmt.setInt(3, loc.blockY());
-                stmt.setInt(4, loc.blockZ());
-                stmt.addBatch();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try(Connection conn = getConnection()) {
+                PreparedStatement stmt = conn.prepareStatement(query);
+                for(Location loc : locs) {
+                    stmt.setString(1, loc.getWorld().getName());
+                    stmt.setInt(2, loc.blockX());
+                    stmt.setInt(3, loc.blockY());
+                    stmt.setInt(4, loc.blockZ());
+                    stmt.addBatch();
+                }
+                plugin.getLogger().info("Added " + stmt.executeBatch().length + " rows");
+            } catch(SQLException e) {
+                plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
             }
-            plugin.getLogger().info("Added " + stmt.executeBatch().length + " rows");
-        } catch(SQLException e) {
-            plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
-        }
-
+        });
         result.complete(null);
         return result;
     }

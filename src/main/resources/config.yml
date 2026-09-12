@@ -24,14 +24,34 @@ sql:
 locale: en
 locales:
   ru:
-    add-success: Ресурс успешно добавлен
-    add-failure: Не получилось добавить ресурс
-    remove-success: Ресурс успешно удален
-    remove-failure: Не получилось удалить ресурс
-    cooldown: Ресурс восстановится через 
+    added: добавлен в список возобновляемых ресурсов
+    already: уже
+    block-with-coordinates: Блок с координатами
+    cooldown: Ресурс восстановится через
+    in-list: состоит в списке возобновляемых ресурсов
+    in-world: в мире
+    non: не
+    not: не
+    now: теперь
+    reloaded: Конфигурационные данные перезагружены
+    removed: удален из списка возобновлемых ресурсов
+    renewable: возобновлемые
+    resources-in-region: Ресурсы в регионе
+    success: успешно
+    syntax-error: Синтаксическая ошибка при выполнении команды
   en:
-    add-success: The node is added successfully
-    add-failure: Failed to add the node
-    remove-success: The node is removed successfully
-    remove-failure: Failed to remove the node
+    added: added to replenishing nodes list
+    already: is already
+    block-with-coordinates: Block with coordinates
     cooldown: The node will replenish in
+    in-list: in replenishing nodes list
+    in-world: in the world
+    non: non-
+    not: is not
+    now: are now
+    reloaded: Config reloaded
+    removed: removed from the replenishing nodes list
+    renewable: renewable
+    resources-in-region: Resources in selected WorldEdit region
+    success: successfully
+    syntax-error: Syntax error during command execution

@@ -95,6 +95,29 @@ public class DatabaseManager {
         return locations;
     }
 
+    public CompletableFuture<List<Location>> fetchLocations(int limit, int page) {
+        CompletableFuture<List<Location>> res = new CompletableFuture<>();
+        List<Location> locations = new ArrayList<>(0);
+        String query = "SELECT * FROM " + tableName + " ORDER BY x,y,z LIMIT " + limit + " OFFSET " + limit*(page-1);
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try(Connection conn = getConnection()) {
+                PreparedStatement stmt = conn.prepareStatement(query);
+                ResultSet rs = stmt.executeQuery();
+                while(rs.next())
+                    locations.add(new Location(
+                        Bukkit.getWorld(rs.getString("world")),
+                        rs.getInt("x"),
+                        rs.getInt("y"),
+                        rs.getInt("z")
+                    ));
+                res.complete(locations);
+            } catch(SQLException e) {
+                res.complete(null);
+            }
+        });
+        return res;
+    }
+
     public CompletableFuture<Void> addLocation(Location loc) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         String query = "INSERT INTO " + tableName + " (world,x,y,z) VALUES (?,?,?,?);";

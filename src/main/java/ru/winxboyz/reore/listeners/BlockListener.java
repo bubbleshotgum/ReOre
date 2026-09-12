@@ -23,9 +23,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 
 public class BlockListener implements Listener {
-    
-    // private ReOre plugin;
 
+    private final ReOre plugin;
     private final Map<Material,Long> timings;
     private final ConcurrentHashMap<Location,OreData> ores;
 
@@ -39,14 +38,6 @@ public class BlockListener implements Listener {
         if(!ores.containsKey(loc)) return;
 
         Material blockType = block.getType();
-
-        // if(!timings.keySet().contains(blockType)) {
-        //     plugin.getLogger().warning(
-        //         "Блок с координатами "
-        //         + loc.blockX() + " " + loc.blockY() + " " + loc.blockZ()
-        //         + " сохранен в списке руд, но не является рудой");
-        //     return;
-        // }
 
         event.setCancelled(true);
         
@@ -73,14 +64,14 @@ public class BlockListener implements Listener {
         if(block.getType() == Material.BEDROCK) {
             event.setCancelled(true);
             event.getPlayer().sendMessage(
-                Component.text("Ресурс восстановится через ").color(NamedTextColor.RED)
-                .append(Component.text(ores.get(loc).toString()).color(NamedTextColor.AQUA))
+                Component.text(plugin.getMessages().get("cooldown") + " ").color(NamedTextColor.RED)
+                .append(Component.text(ores.get(loc).toString(plugin.LOCALE())).color(NamedTextColor.AQUA))
             );
         }
     }
 
     public BlockListener(ReOre plugin) {
-        // this.plugin = plugin;
+        this.plugin = plugin;
         this.timings = plugin.getDefaultTimings();
         this.ores = plugin.getOres();
     }

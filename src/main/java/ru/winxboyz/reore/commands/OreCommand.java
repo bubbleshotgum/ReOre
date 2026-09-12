@@ -5,12 +5,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -41,16 +43,20 @@ public class OreCommand {
 
     private ConcurrentHashMap<Location,OreData> ores;
     private Map<Material,Long> timings;
-    
+    private Map<String,String> messages;
 
     private final LiteralArgumentBuilder<CommandSourceStack>
         ore      = Commands.literal("ore")
         .requires(source -> source.getSender().isOp() && source.getSender() instanceof Player),
         add      = Commands.literal("add"),
         remove   = Commands.literal("remove"),
-        list     = Commands.literal("list");
+        list     = Commands.literal("list"),
+        reload   = Commands.literal("reload");
     private final RequiredArgumentBuilder<CommandSourceStack,BlockPositionResolver>
-        pos = Commands.argument("pos", ArgumentTypes.blockPosition());
+        pos  = Commands.argument("pos", ArgumentTypes.blockPosition());
+    private final RequiredArgumentBuilder<CommandSourceStack,Integer>
+        page = Commands.argument("page", IntegerArgumentType.integer(1)); 
+    
 
     private DatabaseManager databaseManager = PluginManager.getInstance().getDatabaseManager();
 
@@ -58,41 +64,30 @@ public class OreCommand {
         World world = player.getWorld();
         if(ores.containsKey(location)) {
             player.sendMessage(Component
-                .text("Блок с координатами ")
+                .text(messages.get("block-with-coordinates") + " ")
                     .append(Component.text(location.blockX() 
                         + " " + location.blockY()
                         + " " + location.blockZ())
                     .color(NamedTextColor.GOLD))
-                    .append(Component.text(" в мире "))
+                    .append(Component.text(" " + messages.get("in-world") + " "))
                     .append(Component.text(world.getName()).color(NamedTextColor.AQUA))
-                    .append(Component.text(" уже находится в списке возобновляемых ресурсов!"))
+                    .append(Component.text(" " + messages.get("already") + " " + messages.get("in-list")))
                 .color(NamedTextColor.RED));
             return;
         }
-        else if(!timings.containsKey(location.getBlock().getType())) {
-            // player.sendMessage(Component
-            //     .text("Тип блока с координатами ")
-            //         .append(Component.text(location.blockX() 
-            //             + " " + location.blockY()
-            //             + " " + location.blockZ())
-            //         .color(NamedTextColor.GOLD))
-            //         .append(Component.text(" в мире "))
-            //         .append(Component.text(world.getName()).color(NamedTextColor.AQUA))
-            //         .append(Component.text(" не входит в список возобновляемых типов"))
-            //     .color(NamedTextColor.RED));
+        else if(!timings.containsKey(location.getBlock().getType()))
             return;
-        }
         ores.put(location,OreData.EMPTY);
         databaseManager.addLocation(location);
         player.sendMessage(Component
-            .text("Блок с координатами ")
+            .text(messages.get("block-with-coordinates") + " ")
                 .append(Component.text(location.blockX()
                     + " " + location.blockY()
                     + " " + location.blockZ())
                 .color(NamedTextColor.GOLD))
-                .append(Component.text(" в мире "))
+                .append(Component.text(" " + messages.get("in-world") + " "))
                 .append(Component.text(world.getName()).color(NamedTextColor.AQUA))
-                .append(Component.text(" успешно добавлен в список возобновляемых ресурсов!"))
+                .append(Component.text(" " + messages.get("success") + " " + messages.get("added")))
             .color(NamedTextColor.GREEN)
         );
     }
@@ -102,26 +97,26 @@ public class OreCommand {
             ores.remove(location);
             databaseManager.removeLocation(location);
             player.sendMessage(Component
-                .text("Блок с координатами ")
+                .text(messages.get("block-with-coordinates") + " ")
                     .append(Component.text(location.blockX() 
                         + " " + location.blockY()
                         + " " + location.blockZ())
                     .color(NamedTextColor.GOLD))
-                    .append(Component.text(" в мире "))
+                    .append(Component.text(" " + messages.get("in-world") + " "))
                     .append(Component.text(world.getName()).color(NamedTextColor.AQUA))
-                    .append(Component.text(" успешно удален из списка возобновлемых ресурсов!"))
+                    .append(Component.text(" " + messages.get("success") + " " + messages.get("removed")))
                 .color(NamedTextColor.GREEN));
             return;
         }
         player.sendMessage(Component
-            .text("Блок с координатами ")
+            .text(messages.get("block-with-coordinates") + " ")
                 .append(Component.text(location.blockX()
                     + " " + location.blockY()
                     + " " + location.blockZ())
                 .color(NamedTextColor.GOLD))
-                .append(Component.text(" в мире "))
+                .append(Component.text(" " + messages.get("in-world") + " "))
                 .append(Component.text(world.getName()).color(NamedTextColor.AQUA))
-                .append(Component.text(" не состоит в списке возобновлемых ресурсов!"))
+                .append(Component.text(" " + messages.get("not") + " " + messages.get("in-list")))
             .color(NamedTextColor.RED)
         );
     }
@@ -151,13 +146,13 @@ public class OreCommand {
             }
             BlockVector3 min = region.getMinimumPoint(), max = region.getMaximumPoint();
             player.sendMessage(
-                Component.text("Ресурсы в Регионе ")
+                Component.text(messages.get("resources-in-region") + " ")
                 .append(Component.text(min.x() + " " + min.y() + " " + min.z()).color(NamedTextColor.GOLD))
                 .append(Component.text(" <—> "))
                 .append(Component.text(max.x() + " " + max.y() + " " + max.z()).color(NamedTextColor.GOLD))
-                .append(Component.text(" в мире "))
+                .append(Component.text(" " + messages.get("in-world") + " "))
                 .append(Component.text(world.getName()).color(NamedTextColor.AQUA))
-                .append(Component.text(" теперь " + (mode.equals("add") ? "" : "не") + "возобновляемые!")).color(NamedTextColor.GREEN)
+                .append(Component.text(" " + messages.get("now") + " " + (mode.equals("add") ? "" : messages.get("non")) + messages.get("renewable") + "!")).color(NamedTextColor.GREEN)
             );
             if(mode.equals("add"))
                 databaseManager.addLocations   (locs);
@@ -177,7 +172,7 @@ public class OreCommand {
             Location location = resolver.resolve(ctx.getSource()).toLocation(world).toBlockLocation();
             addLocation    (player, location);
         } catch(CommandSyntaxException e) {
-            plugin.getLogger().warning("Синтаксическая ошибка при выполнении команды add:\n" + e.getMessage());
+            plugin.getLogger().warning(messages.get("syntax-error") + " add:\n" + e.getMessage());
         }
         return Command.SINGLE_SUCCESS;
     },
@@ -194,7 +189,7 @@ public class OreCommand {
             Location location = resolver.resolve(ctx.getSource()).toLocation(world).toBlockLocation();
             removeLocation    (player, location);
         }  catch(CommandSyntaxException e) {
-            plugin.getLogger().warning("Синтаксическая ошибка при выполнении команды remove:\n" + e.getMessage());
+            plugin.getLogger().warning(messages.get("syntax-error") + " remove:\n" + e.getMessage());
         }
         return Command.SINGLE_SUCCESS;
     },
@@ -202,31 +197,58 @@ public class OreCommand {
         handleLocations((Player) ctx.getSource().getSender(), "remove");
         return Command.SINGLE_SUCCESS;
     };
-      
+    
+    private final int LIMIT = 10;
+
+    private void displayPage(Player player, int page) {
+        databaseManager.fetchLocations(LIMIT, page).thenAccept(locs -> {
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                Component output = Component.text("--------------------------------------");
+                for(Location loc : locs)
+                    output = output
+                        .append(Component.text("\n"+loc.getWorld().getName()).color(NamedTextColor.AQUA))
+                        .append(Component.text(" " + loc.blockX() + " " + loc.blockY() + " " + loc.blockZ()).color(NamedTextColor.GOLD));
+                player.sendMessage(output);
+            });
+        });
+    }
+
     public LiteralCommandNode<CommandSourceStack> initialize() {
         LiteralArgumentBuilder<CommandSourceStack> builder = ore
             .then(add   .executes(executeAddRegion)   .then(pos.executes(executeAdd)))
             .then(remove.executes(executeRemoveRegion).then(pos.executes(executeRemove)))
             .then(list.executes(ctx -> {
                 Player player = (Player) ctx.getSource().getSender();
-                List<World> worlds = new ArrayList<>(0);
-                for(Location loc : ores.keySet())
-                    if(!worlds.contains(loc.getWorld()))
-                        worlds.add(loc.getWorld());
-                Component output = Component.text("---------------------");
-                for(World world : worlds) {
-                    output = output.append(Component.text("\n" + world.getName()).color(NamedTextColor.AQUA));
-                    for(Location loc : ores.keySet())
-                        if(loc.getWorld() == world)
-                            output = output.append(
-                                Component.text(
-                                    "\n"
-                                    + loc.blockX()
-                                    + " " + loc.blockY()
-                                    + " " + loc.blockZ()).color(NamedTextColor.GOLD));
-                }
-                player.sendMessage(output);
+                // for(Location loc : ores.keySet())
+                //     if(!worlds.contains(loc.getWorld()))
+                //         worlds.add(loc.getWorld());
+                // Component output = Component.text("---------------------");
+                // for(World world : worlds) {
+                //     output = output.append(Component.text("\n" + world.getName()).color(NamedTextColor.AQUA));
+                //     for(Location loc : ores.keySet())
+                //         if(loc.getWorld() == world)
+                //             output = output.append(
+                //                 Component.text(
+                //                     "\n"
+                //                     + loc.blockX()
+                //                     + " " + loc.blockY()
+                //                     + " " + loc.blockZ()).color(NamedTextColor.GOLD));
+                // }
+                // player.sendMessage(output);
+                displayPage(player, 1);
 
+                return Command.SINGLE_SUCCESS;
+            }).then(page.executes(ctx -> {
+                Player player = (Player) ctx.getSource().getSender();
+                int pg = ctx.getArgument("page", Integer.class);
+                displayPage(player, pg);
+
+                return Command.SINGLE_SUCCESS;
+            })))
+            .then(reload.executes(ctx -> {
+                Player player = (Player) ctx.getSource().getSender();
+                plugin.reload();
+                player.sendMessage(Component.text(messages.get("reloaded")).color(NamedTextColor.GREEN));
                 return Command.SINGLE_SUCCESS;
             }));
         return builder.build();
@@ -236,5 +258,6 @@ public class OreCommand {
         this.plugin = plugin;
         ores = plugin.getOres();
         timings = plugin.getDefaultTimings();
+        messages = plugin.getMessages();
     }
 }

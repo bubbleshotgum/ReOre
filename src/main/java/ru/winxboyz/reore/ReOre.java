@@ -18,15 +18,27 @@ import ru.winxboyz.reore.listeners.BlockListener;
 
 public class ReOre extends JavaPlugin {
     
+    private String locale;
+
     private DatabaseManager databaseManager;
-    private Map<Material,Long> defaultTimings = new HashMap<>();
+    private Map<String,String> messages = new HashMap<>();
+    private Map<Material,Long> defaultTimings;
     private ConcurrentHashMap<Location,OreData> ores = new ConcurrentHashMap<>();
 
+    private ConfigurationSection localeSection,sqlSection,timingsSection;
+    private String dbName, tableName;
+
+    public String LOCALE() {
+        return locale;
+    }
     public ConcurrentHashMap<Location,OreData> getOres() {
         return ores;
     }
     public Map<Material,Long> getDefaultTimings() {
         return defaultTimings;
+    }
+    public Map<String,String> getMessages() {
+        return messages;
     }
 
     private void tickOres() {
@@ -59,13 +71,15 @@ public class ReOre extends JavaPlugin {
         }
     }
 
-    @Override
-    public void onEnable() {
-        saveDefaultConfig();
+    public void loadConfig() {
+        defaultTimings = new HashMap<>();
 
-        ConfigurationSection
-            timingsSection = getConfig().getConfigurationSection("timings"),
-            sqlSection     = getConfig().getConfigurationSection("sql");
+        locale = getConfig().getString("locale","en");
+        
+        timingsSection = getConfig().getConfigurationSection("timings");
+        sqlSection     = getConfig().getConfigurationSection("sql");
+        localeSection  = getConfig().getConfigurationSection("locales." + locale);
+
         if(timingsSection == null) {
             defaultTimings = Map.ofEntries(
                 Map.entry(Material.COAL_ORE, 5 * 60 * 1000L),Map.entry(Material.DEEPSLATE_COAL_ORE, 5 * 60 * 1000L),
@@ -86,33 +100,51 @@ public class ReOre extends JavaPlugin {
             }        
             saveConfig();
         }
-
-        
         for(String key : timingsSection.getKeys(false)) {
             Material material = Material.valueOf(key.toUpperCase());
             long time = timingsSection.getLong(key);
             defaultTimings.put(material, time);
         }
 
-        String tableName = sqlSection.getString("locationsTable");
+        if(localeSection != null)
+            for(String key : localeSection.getKeys(false))
+                messages.put(key, localeSection.getString(key));
+        tableName = sqlSection.getString("locationsTable");
+        if(dbName == null || !dbName.equals(sqlSection.getString("database"))) {
+            dbName = sqlSection.getString("database","reore");
+            databaseManager.close();
+            databaseManager.connect(dbName);
+
+            databaseManager.createTableLocations().thenAccept(res -> {
+                databaseManager.fetchLocations().thenAccept(locs -> {
+                    for(Location loc : locs)
+                        ores.put(loc, OreData.EMPTY);
+                });
+            });
+        }
+    }
+
+    public void reload() {
+        reloadConfig();
+        cancelTicks();
+        loadConfig();
+    }
+
+    @Override
+    public void onEnable() {
+        saveDefaultConfig();
+
+        locale = getConfig().getString("locale","en");
         PluginManager pluginManager = PluginManager.getInstance();
         pluginManager.initialize(this,tableName);
+        databaseManager = pluginManager.getDatabaseManager();
+        loadConfig();
 
         CommandManager.getInstance().initialize(this);
 
         getServer().getPluginManager().registerEvents(new BlockListener(this), this);
-
-        databaseManager = pluginManager.getDatabaseManager();
-        databaseManager.connect(sqlSection.getString("database"));
-        databaseManager.createTableLocations().thenAccept(res -> {
-            databaseManager.fetchLocations().thenAccept(locs -> {
-                for(Location loc : locs)
-                    ores.put(loc, OreData.EMPTY);
-                
-                Bukkit.getScheduler().runTaskTimer(this, this::tickOres, 10L, 10L);
-            });
-        });
-
+        
+        Bukkit.getScheduler().runTaskTimer(this, this::tickOres, 10L, 10L);
         getLogger().info(getName() + " has been enabled!");
     }
 

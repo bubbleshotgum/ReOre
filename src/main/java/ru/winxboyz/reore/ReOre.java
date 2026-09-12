@@ -1,28 +1,25 @@
 package ru.winxboyz.reore;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;
 import ru.winxboyz.reore.managers.CommandManager;
+import ru.winxboyz.reore.managers.DatabaseManager;
 import ru.winxboyz.reore.managers.PluginManager;
 import ru.winxboyz.reore.utils.OreData;
 import ru.winxboyz.reore.listeners.BlockListener;
 
 public class ReOre extends JavaPlugin {
     
+    private DatabaseManager databaseManager;
     private Map<Material,Long> defaultTimings = new HashMap<>();
-    private List<World> registeredWorlds = new ArrayList<>();
     private ConcurrentHashMap<Location,OreData> ores = new ConcurrentHashMap<>();
 
     public ConcurrentHashMap<Location,OreData> getOres() {
@@ -30,9 +27,6 @@ public class ReOre extends JavaPlugin {
     }
     public Map<Material,Long> getDefaultTimings() {
         return defaultTimings;
-    }
-    public List<World> getWorlds() {
-        return registeredWorlds;
     }
 
     private void tickOres() {
@@ -47,7 +41,7 @@ public class ReOre extends JavaPlugin {
             if(data.getTimeToRegenerate() <= currentTime
             && loc.getWorld().isChunkLoaded(loc.blockX() >> 4, loc.blockZ() >> 4)) {
                 loc.getBlock().setType(data.getType());
-                iterator.remove();
+                data = OreData.EMPTY;
             }
         }
     }
@@ -65,29 +59,13 @@ public class ReOre extends JavaPlugin {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void initializeOreLocations() {
-        if(getConfig().isList("locations")) {
-            List<Location> locations = (List<Location>) getConfig().getList("locations");
-            for(Location loc : locations)
-                ores.put(loc, OreData.EMPTY);
-        }
-    }
-
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
-        List<String> worldNames = getConfig().getStringList("worlds");
-        if(worldNames.isEmpty()) {
-            worldNames = Arrays.asList("world");        
-            getConfig().set("worlds", worldNames);        
-            saveConfig();
-        }
-        for(String worldName : worldNames)
-            registeredWorlds.add(Bukkit.getWorld(worldName));
-
-        ConfigurationSection timingsSection = getConfig().getConfigurationSection("timings");
+        ConfigurationSection
+            timingsSection = getConfig().getConfigurationSection("timings"),
+            sqlSection     = getConfig().getConfigurationSection("sql");
         if(timingsSection == null) {
             defaultTimings = Map.ofEntries(
                 Map.entry(Material.COAL_ORE, 5 * 60 * 1000L),Map.entry(Material.DEEPSLATE_COAL_ORE, 5 * 60 * 1000L),
@@ -110,21 +88,30 @@ public class ReOre extends JavaPlugin {
         }
 
         
-        initializeOreLocations();
         for(String key : timingsSection.getKeys(false)) {
             Material material = Material.valueOf(key.toUpperCase());
             long time = timingsSection.getLong(key);
             defaultTimings.put(material, time);
         }
-        
 
-        PluginManager.getInstance().initialize();
+        String tableName = sqlSection.getString("locationsTable");
+        PluginManager pluginManager = PluginManager.getInstance();
+        pluginManager.initialize(this,tableName);
+
         CommandManager.getInstance().initialize(this);
-        
+
         getServer().getPluginManager().registerEvents(new BlockListener(this), this);
 
-        
-        Bukkit.getScheduler().runTaskTimer(this, this::tickOres, 10L, 10L);
+        databaseManager = pluginManager.getDatabaseManager();
+        databaseManager.connect(sqlSection.getString("database"));
+        databaseManager.createTableLocations().thenAccept(res -> {
+            databaseManager.fetchLocations().thenAccept(locs -> {
+                for(Location loc : locs)
+                    ores.put(loc, OreData.EMPTY);
+                
+                Bukkit.getScheduler().runTaskTimer(this, this::tickOres, 10L, 10L);
+            });
+        });
 
         getLogger().info(getName() + " has been enabled!");
     }
@@ -133,6 +120,7 @@ public class ReOre extends JavaPlugin {
     public void onDisable() {
         cancelTicks();
         Bukkit.getScheduler().cancelTasks(this);
+        databaseManager.close();
         getLogger().info(getName() + " has been disabled!");
     }
     

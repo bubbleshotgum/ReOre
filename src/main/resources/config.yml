@@ -1,5 +1,3 @@
-worlds:
-- world
 timings:
   COAL_ORE: 300000
   DEEPSLATE_COAL_ORE: 300000
@@ -20,4 +18,20 @@ timings:
   NETHER_QUARTZ_ORE: 300000
   NETHER_GOLD_ORE: 300000
   ANCIENT_DEBRIS: 7200000
-locations:
+sql:
+  database: reore
+  locationsTable: locations
+locale: en
+locales:
+  ru:
+    add-success: Ресурс успешно добавлен
+    add-failure: Не получилось добавить ресурс
+    remove-success: Ресурс успешно удален
+    remove-failure: Не получилось удалить ресурс
+    cooldown: Ресурс восстановится через 
+  en:
+    add-success: The node is added successfully
+    add-failure: Failed to add the node
+    remove-success: The node is removed successfully
+    remove-failure: Failed to remove the node
+    cooldown: The node will replenish in

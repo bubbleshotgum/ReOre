@@ -17,50 +17,44 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 
 public class BlockListener implements Listener {
     
-    private ReOre plugin;
+    // private ReOre plugin;
 
     private final Map<Material,Long> timings;
     private final ConcurrentHashMap<Location,OreData> ores;
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-
-        World world = player.getWorld();
-        if(!plugin.getWorlds().contains(world)) return;
         
         Block block = event.getBlock();
-        
         Location loc = block.getLocation();
         
         if(!ores.containsKey(loc)) return;
 
         Material blockType = block.getType();
 
-        if(!timings.keySet().contains(blockType)) {
-            plugin.getLogger().warning(
-                "Блок с координатами "
-                + loc.blockX() + " " + loc.blockY() + " " + loc.blockZ()
-                + " сохранен в списке руд, но не является рудой");
-            return;
-        }
+        // if(!timings.keySet().contains(blockType)) {
+        //     plugin.getLogger().warning(
+        //         "Блок с координатами "
+        //         + loc.blockX() + " " + loc.blockY() + " " + loc.blockZ()
+        //         + " сохранен в списке руд, но не является рудой");
+        //     return;
+        // }
 
         event.setCancelled(true);
-
+        
         ItemStack tool = player.getInventory().getItemInMainHand();
         Collection<ItemStack> drops = block.getDrops(tool,player);
 
         for(ItemStack drop : drops)
             player.getInventory().addItem(drop);
-        player.giveExp(4);
-
         block.setType(Material.BEDROCK);
 
         long timing = System.currentTimeMillis() + timings.get(blockType);
@@ -79,14 +73,14 @@ public class BlockListener implements Listener {
         if(block.getType() == Material.BEDROCK) {
             event.setCancelled(true);
             event.getPlayer().sendMessage(
-                Component.text("Руда восстановится через ").color(NamedTextColor.RED)
+                Component.text("Ресурс восстановится через ").color(NamedTextColor.RED)
                 .append(Component.text(ores.get(loc).toString()).color(NamedTextColor.AQUA))
             );
         }
     }
 
     public BlockListener(ReOre plugin) {
-        this.plugin = plugin;
+        // this.plugin = plugin;
         this.timings = plugin.getDefaultTimings();
         this.ores = plugin.getOres();
     }

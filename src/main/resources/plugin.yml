@@ -1,8 +1,13 @@
 main: ru.winxboyz.reore.ReOre
-version: 1.0.0-SNAPSHOT
+version: 1.0.1
 name: ReOre
 author: bubbleshotgum
 description: 
 api-version: 1.21
 
+softdepend:
+  - WorldEdit
 
+libraries:
+  - com.zaxxer:HikariCP:5.1.0
+  - org.slf4j:slf4j-simple:2.0.13

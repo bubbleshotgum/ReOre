@@ -5,17 +5,18 @@ plugins {
 }
 
 group = "ru.winxboyz.reore"
-version = "1.0.0-SNAPSHOT"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://maven.enginehub.org/repo/")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
-    
-    
+    compileOnly("com.sk89q.worldedit:worldedit-bukkit:7.3.9")
+    compileOnly("com.zaxxer:HikariCP:5.1.0")
 }
 
 tasks.withType<JavaCompile> {

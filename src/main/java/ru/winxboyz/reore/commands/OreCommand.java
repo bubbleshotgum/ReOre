@@ -219,22 +219,6 @@ public class OreCommand {
             .then(remove.executes(executeRemoveRegion).then(pos.executes(executeRemove)))
             .then(list.executes(ctx -> {
                 Player player = (Player) ctx.getSource().getSender();
-                // for(Location loc : ores.keySet())
-                //     if(!worlds.contains(loc.getWorld()))
-                //         worlds.add(loc.getWorld());
-                // Component output = Component.text("---------------------");
-                // for(World world : worlds) {
-                //     output = output.append(Component.text("\n" + world.getName()).color(NamedTextColor.AQUA));
-                //     for(Location loc : ores.keySet())
-                //         if(loc.getWorld() == world)
-                //             output = output.append(
-                //                 Component.text(
-                //                     "\n"
-                //                     + loc.blockX()
-                //                     + " " + loc.blockY()
-                //                     + " " + loc.blockZ()).color(NamedTextColor.GOLD));
-                // }
-                // player.sendMessage(output);
                 displayPage(player, 1);
 
                 return Command.SINGLE_SUCCESS;

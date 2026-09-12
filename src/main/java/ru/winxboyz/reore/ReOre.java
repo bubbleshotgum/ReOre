@@ -3,6 +3,7 @@ package ru.winxboyz.reore;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
@@ -22,7 +23,7 @@ public class ReOre extends JavaPlugin {
 
     private DatabaseManager databaseManager;
     private Map<String,String> messages = new HashMap<>();
-    private Map<Material,Long> defaultTimings;
+    private Map<Material,Long> defaultTimings = new HashMap<>();
     private ConcurrentHashMap<Location,OreData> ores = new ConcurrentHashMap<>();
 
     private ConfigurationSection localeSection,sqlSection,timingsSection;
@@ -30,6 +31,9 @@ public class ReOre extends JavaPlugin {
 
     public String LOCALE() {
         return locale;
+    }
+    public String TABLE_NAME() {
+        return tableName;
     }
     public ConcurrentHashMap<Location,OreData> getOres() {
         return ores;
@@ -57,7 +61,7 @@ public class ReOre extends JavaPlugin {
             }
         }
     }
-    private void cancelTicks() {
+    private void cancelTicks(boolean shouldEmpty) {
         if(ores.isEmpty()) return;
         Iterator<Map.Entry<Location,OreData>> iterator = ores.entrySet().iterator();
         while(iterator.hasNext()) {
@@ -67,12 +71,15 @@ public class ReOre extends JavaPlugin {
             if(data == OreData.EMPTY) continue;
             
             loc.getBlock().setType(data.getType());
-            iterator.remove();
+            if(shouldEmpty)
+                iterator.remove();
+            else
+                entry.setValue(OreData.EMPTY);
         }
     }
 
     public void loadConfig() {
-        defaultTimings = new HashMap<>();
+        // defaultTimings = new HashMap<>();
 
         locale = getConfig().getString("locale","en");
         
@@ -100,11 +107,16 @@ public class ReOre extends JavaPlugin {
             }        
             saveConfig();
         }
-        for(String key : timingsSection.getKeys(false)) {
+        Set<String> materials = timingsSection.getKeys(false);
+        for(String key : materials) {
             Material material = Material.valueOf(key.toUpperCase());
             long time = timingsSection.getLong(key);
             defaultTimings.put(material, time);
         }
+
+        for(Material key : defaultTimings.keySet())
+            if(!materials.contains(key.name()))
+                defaultTimings.remove(key);
 
         if(localeSection != null)
             for(String key : localeSection.getKeys(false))
@@ -114,19 +126,18 @@ public class ReOre extends JavaPlugin {
             dbName = sqlSection.getString("database","reore");
             databaseManager.close();
             databaseManager.connect(dbName);
-
-            databaseManager.createTableLocations().thenAccept(res -> {
-                databaseManager.fetchLocations().thenAccept(locs -> {
-                    for(Location loc : locs)
-                        ores.put(loc, OreData.EMPTY);
-                });
-            });
         }
+        databaseManager.createTableLocations().thenAccept(res -> {
+            databaseManager.fetchLocations().thenAccept(locs -> {
+                for(Location loc : locs)
+                    ores.put(loc, OreData.EMPTY);
+            });
+        });
     }
 
     public void reload() {
         reloadConfig();
-        cancelTicks();
+        cancelTicks(false);
         loadConfig();
     }
 
@@ -136,7 +147,7 @@ public class ReOre extends JavaPlugin {
 
         locale = getConfig().getString("locale","en");
         PluginManager pluginManager = PluginManager.getInstance();
-        pluginManager.initialize(this,tableName);
+        pluginManager.initialize(this);
         databaseManager = pluginManager.getDatabaseManager();
         loadConfig();
 
@@ -150,7 +161,7 @@ public class ReOre extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        cancelTicks();
+        cancelTicks(true);
         Bukkit.getScheduler().cancelTasks(this);
         databaseManager.close();
         getLogger().info(getName() + " has been disabled!");

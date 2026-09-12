@@ -21,11 +21,9 @@ public class DatabaseManager {
 
     private ReOre plugin;
     private HikariDataSource dataSource;
-    private String tableName;
 
-    public DatabaseManager(ReOre plugin, String tableName) {
+    public DatabaseManager(ReOre plugin) {
         this.plugin = plugin;
-        this.tableName = tableName;
     }
 
     public void connect(String database) {
@@ -51,7 +49,7 @@ public class DatabaseManager {
     public CompletableFuture<Void> createTableLocations() {
         CompletableFuture<Void> result = new CompletableFuture<>();
 
-        String query = "CREATE TABLE IF NOT EXISTS " + tableName +  " ("
+        String query = "CREATE TABLE IF NOT EXISTS " + plugin.TABLE_NAME() +  " ("
                     +  "loc_id INTEGER PRIMARY KEY AUTOINCREMENT,"
                     +  "world VARCHAR2(36),"
                     +  "x INTEGER,"
@@ -72,7 +70,7 @@ public class DatabaseManager {
 
     public CompletableFuture<List<Location>> fetchLocations() {
         CompletableFuture<List<Location>> locations = new CompletableFuture<>();
-        String query = "SELECT * FROM " + tableName + " ;";
+        String query = "SELECT * FROM " + plugin.TABLE_NAME() + " ;";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try(Connection conn = getConnection()) {
                 PreparedStatement stmt = conn.prepareStatement(query);
@@ -98,7 +96,7 @@ public class DatabaseManager {
     public CompletableFuture<List<Location>> fetchLocations(int limit, int page) {
         CompletableFuture<List<Location>> res = new CompletableFuture<>();
         List<Location> locations = new ArrayList<>(0);
-        String query = "SELECT * FROM " + tableName + " ORDER BY x,y,z LIMIT " + limit + " OFFSET " + limit*(page-1);
+        String query = "SELECT * FROM " + plugin.TABLE_NAME() + " ORDER BY x,y,z LIMIT " + limit + " OFFSET " + limit*(page-1) + ";";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try(Connection conn = getConnection()) {
                 PreparedStatement stmt = conn.prepareStatement(query);
@@ -120,7 +118,7 @@ public class DatabaseManager {
 
     public CompletableFuture<Void> addLocation(Location loc) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        String query = "INSERT INTO " + tableName + " (world,x,y,z) VALUES (?,?,?,?);";
+        String query = "INSERT INTO " + plugin.TABLE_NAME() + " (world,x,y,z) VALUES (?,?,?,?);";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try(Connection conn = getConnection()) {
                 PreparedStatement stmt = conn.prepareStatement(query);
@@ -139,7 +137,7 @@ public class DatabaseManager {
 
     public CompletableFuture<Void> addLocations(List<Location> locs) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        String query = "INSERT INTO " + tableName + " (world,x,y,z) VALUES (?,?,?,?);";
+        String query = "INSERT INTO " + plugin.TABLE_NAME() + " (world,x,y,z) VALUES (?,?,?,?);";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try(Connection conn = getConnection()) {
                 PreparedStatement stmt = conn.prepareStatement(query);
@@ -161,7 +159,7 @@ public class DatabaseManager {
 
     public CompletableFuture<Void> removeLocation(Location loc) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        String query = "DELETE FROM " + tableName + " WHERE world = ? AND x = ? AND y = ? AND z = ?;";
+        String query = "DELETE FROM " + plugin.TABLE_NAME() + " WHERE world = ? AND x = ? AND y = ? AND z = ?;";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try(Connection conn = getConnection()) {
                 PreparedStatement stmt = conn.prepareStatement(query);
@@ -181,7 +179,7 @@ public class DatabaseManager {
 
     public CompletableFuture<Void> removeLocations(List<Location> locs) {
         CompletableFuture<Void> result = new CompletableFuture<>();
-        String query = "DELETE FROM " + tableName + " WHERE world = ? AND x = ? AND y = ? AND z = ?;";
+        String query = "DELETE FROM " + plugin.TABLE_NAME() + " WHERE world = ? AND x = ? AND y = ? AND z = ?;";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try(Connection conn = getConnection()) {
                 PreparedStatement stmt = conn.prepareStatement(query);

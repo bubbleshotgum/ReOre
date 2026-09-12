@@ -17,7 +17,7 @@ public class PluginManager {
         return instance;
     }
 
-    public void initialize(ReOre plugin, String tableName) {
-        dbManager = new DatabaseManager(plugin, tableName);
+    public void initialize(ReOre plugin) {
+        dbManager = new DatabaseManager(plugin);
     }
 }

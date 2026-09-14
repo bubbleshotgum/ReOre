@@ -51,7 +51,7 @@ public class OreData {
         int time = (int) (timeToRegenerate - System.currentTimeMillis()) / 1000;
         return (time/3600>0 ? timeMessage(locale.equals("ru") ? OreData.HOURS_RU : OreData.HOURS_EN, time/3600) + " " : "")
             +  (time/60  >0 ? timeMessage(locale.equals("ru") ? OreData.MINUTES_RU : OreData.MINUTES_EN, (time/60) % 60) + " " : "")
-            +  (time%60  >0 ? timeMessage(locale.equals("ru") ? OreData.SECONDS_RU : OreData.MINUTES_EN, time%60) : "");
+            +  (time%60  >0 ? timeMessage(locale.equals("ru") ? OreData.SECONDS_RU : OreData.SECONDS_EN, time%60) : "");
     }
 
     public OreData(Material oreType, long timeToRegenerate) {

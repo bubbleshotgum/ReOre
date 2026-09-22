@@ -39,13 +39,17 @@ public class BlockListener implements Listener {
 
         Material blockType = block.getType();
 
+        int exp = event.getExpToDrop();
+
         event.setCancelled(true);
         
         ItemStack tool = player.getInventory().getItemInMainHand();
         Collection<ItemStack> drops = block.getDrops(tool,player);
-
+        
         for(ItemStack drop : drops)
             player.getInventory().addItem(drop);
+        tool.damage(1, player);
+        player.giveExp(exp);
         block.setType(Material.BEDROCK);
 
         long timing = System.currentTimeMillis() + timings.get(blockType);
@@ -63,7 +67,7 @@ public class BlockListener implements Listener {
 
         if(block.getType() == Material.BEDROCK) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(
+            event.getPlayer().sendActionBar(
                 Component.text(plugin.getMessages().get("cooldown") + " ").color(NamedTextColor.RED)
                 .append(Component.text(ores.get(loc).toString(plugin.LOCALE())).color(NamedTextColor.AQUA))
             );

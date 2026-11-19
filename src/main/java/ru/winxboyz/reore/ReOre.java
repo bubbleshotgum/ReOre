@@ -1,7 +1,8 @@
 package ru.winxboyz.reore;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,12 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;
-import ru.winxboyz.reore.managers.CommandManager;
 import ru.winxboyz.reore.managers.DatabaseManager;
 import ru.winxboyz.reore.managers.PluginManager;
-import ru.winxboyz.reore.utils.OreData;
+import ru.winxboyz.reore.tasks.TickResources;
+import ru.winxboyz.reore.utils.ResourceData;
 import ru.winxboyz.reore.listeners.BlockListener;
 
 public class ReOre extends JavaPlugin {
@@ -23,10 +25,12 @@ public class ReOre extends JavaPlugin {
 
     private DatabaseManager databaseManager;
     private Map<String,String> messages = new HashMap<>();
-    private Map<Material,Long> defaultTimings = new HashMap<>();
-    private ConcurrentHashMap<Location,OreData> ores = new ConcurrentHashMap<>();
+    private List<ResourceData> resources;
+    private ConcurrentHashMap<Location,ResourceData> registries = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Location,Long> cooldowns = new ConcurrentHashMap<>();
+    private TickResources tasks;
 
-    private ConfigurationSection localeSection,sqlSection,timingsSection;
+    private ConfigurationSection localeSection,sqlSection,resourcesSection;
     private String dbName, tableName;
 
     public String LOCALE() {
@@ -35,88 +39,63 @@ public class ReOre extends JavaPlugin {
     public String TABLE_NAME() {
         return tableName;
     }
-    public ConcurrentHashMap<Location,OreData> getOres() {
-        return ores;
+    public List<ResourceData> getResources() {
+        return resources;
     }
-    public Map<Material,Long> getDefaultTimings() {
-        return defaultTimings;
+    public ConcurrentHashMap<Location,ResourceData> getRegistries() {
+        return registries;
+    }
+    public ConcurrentHashMap<Location,Long> getCooldowns() {
+        return cooldowns;
     }
     public Map<String,String> getMessages() {
         return messages;
     }
 
-    private void tickOres() {
-        if(ores.isEmpty()) return;
-        long currentTime = System.currentTimeMillis();
-        Iterator<Map.Entry<Location,OreData>> iterator = ores.entrySet().iterator();
-        while(iterator.hasNext()) {
-            Map.Entry<Location,OreData> entry = iterator.next();
-            Location loc = entry.getKey();
-            OreData data = entry.getValue();
-            if(data == OreData.EMPTY) continue;
-            if(data.getTimeToRegenerate() <= currentTime
-            && loc.getWorld().isChunkLoaded(loc.blockX() >> 4, loc.blockZ() >> 4)) {
-                loc.getBlock().setType(data.getType());
-                data = OreData.EMPTY;
-            }
-        }
-    }
-    private void cancelTicks(boolean shouldEmpty) {
-        if(ores.isEmpty()) return;
-        Iterator<Map.Entry<Location,OreData>> iterator = ores.entrySet().iterator();
-        while(iterator.hasNext()) {
-            Map.Entry<Location,OreData> entry = iterator.next();
-            Location loc = entry.getKey();
-            OreData data = entry.getValue();
-            if(data == OreData.EMPTY) continue;
-            
-            loc.getBlock().setType(data.getType());
-            if(shouldEmpty)
-                iterator.remove();
-            else
-                entry.setValue(OreData.EMPTY);
-        }
-    }
+    
 
     public void loadConfig() {
-        // defaultTimings = new HashMap<>();
-
         locale = getConfig().getString("locale","en");
         
-        timingsSection = getConfig().getConfigurationSection("timings");
+        resourcesSection = getConfig().getConfigurationSection("resources");
         sqlSection     = getConfig().getConfigurationSection("sql");
         localeSection  = getConfig().getConfigurationSection("locales." + locale);
 
-        if(timingsSection == null) {
-            defaultTimings = Map.ofEntries(
-                Map.entry(Material.COAL_ORE, 5 * 60 * 1000L),Map.entry(Material.DEEPSLATE_COAL_ORE, 5 * 60 * 1000L),
-                Map.entry(Material.COPPER_ORE, 10 * 60 * 1000L),Map.entry(Material.DEEPSLATE_COPPER_ORE, 10 * 60 * 1000L),
-                Map.entry(Material.LAPIS_ORE, 15 * 60 * 1000L),Map.entry(Material.DEEPSLATE_LAPIS_ORE, 15 * 60 * 1000L),
-                Map.entry(Material.REDSTONE_ORE, 15 * 60 * 1000L),Map.entry(Material.DEEPSLATE_REDSTONE_ORE, 15 * 60 * 1000L),
-                Map.entry(Material.IRON_ORE, 30 * 60 * 1000L),Map.entry(Material.DEEPSLATE_IRON_ORE, 30 * 60 * 1000L),
-                Map.entry(Material.GOLD_ORE, 30 * 60 * 1000L),Map.entry(Material.DEEPSLATE_GOLD_ORE, 30 * 60 * 1000L),
-                Map.entry(Material.DIAMOND_ORE, 60 * 60 * 1000L),Map.entry(Material.DEEPSLATE_DIAMOND_ORE, 60 * 60 * 1000L),
-                Map.entry(Material.EMERALD_ORE, 60 * 60 * 1000L),Map.entry(Material.DEEPSLATE_EMERALD_ORE, 60 * 60 * 1000L),
-                
-                Map.entry(Material.NETHER_QUARTZ_ORE, 5 * 60 * 1000L),
-                Map.entry(Material.NETHER_GOLD_ORE, 5 * 60 * 1000L),
-                Map.entry(Material.ANCIENT_DEBRIS, 2 * 60 * 60 * 1000L)
-            );
-            for(Map.Entry<Material,Long> timing : defaultTimings.entrySet()) {
-                getConfig().set("timings."+timing.getKey().name(), timing.getValue());
-            }        
-            saveConfig();
-        }
-        Set<String> materials = timingsSection.getKeys(false);
-        for(String key : materials) {
-            Material material = Material.valueOf(key.toUpperCase());
-            long time = timingsSection.getLong(key);
-            defaultTimings.put(material, time);
+        if(sqlSection == null) {
+            getLogger().severe("No SQL connection credentials specified");
+            return;
         }
 
-        for(Material key : defaultTimings.keySet())
-            if(!materials.contains(key.name()))
-                defaultTimings.remove(key);
+        if(resourcesSection == null) {
+            resources = List.of(
+                new ResourceData(Material.COAL_ORE, 5 * 60 * 1000L),new ResourceData(Material.DEEPSLATE_COAL_ORE, 5 * 60 * 1000L),
+                new ResourceData(Material.COPPER_ORE, 10 * 60 * 1000L),new ResourceData(Material.DEEPSLATE_COPPER_ORE, 10 * 60 * 1000L),
+                new ResourceData(Material.LAPIS_ORE, 15 * 60 * 1000L),new ResourceData(Material.DEEPSLATE_LAPIS_ORE, 15 * 60 * 1000L),
+                new ResourceData(Material.REDSTONE_ORE, 15 * 60 * 1000L),new ResourceData(Material.DEEPSLATE_REDSTONE_ORE, 15 * 60 * 1000L),
+                new ResourceData(Material.IRON_ORE, 30 * 60 * 1000L),new ResourceData(Material.DEEPSLATE_IRON_ORE, 30 * 60 * 1000L),
+                new ResourceData(Material.GOLD_ORE, 30 * 60 * 1000L),new ResourceData(Material.DEEPSLATE_GOLD_ORE, 30 * 60 * 1000L),
+                new ResourceData(Material.DIAMOND_ORE, 60 * 60 * 1000L),new ResourceData(Material.DEEPSLATE_DIAMOND_ORE, 60 * 60 * 1000L),
+                new ResourceData(Material.EMERALD_ORE, 60 * 60 * 1000L),new ResourceData(Material.DEEPSLATE_EMERALD_ORE, 60 * 60 * 1000L),
+                
+                new ResourceData(Material.NETHER_QUARTZ_ORE, 5 * 60 * 1000L),
+                new ResourceData(Material.NETHER_GOLD_ORE, 5 * 60 * 1000L),
+                new ResourceData(Material.ANCIENT_DEBRIS, 2 * 60 * 60 * 1000L));
+            for(ResourceData data : resources) {
+                getConfig().set("resources." + data.getResource() + ".cooldown", data.getCooldown());
+                getConfig().set("resources." + data.getResource() + ".placeholder", data.getPlaceholder().getMaterial());
+            }        
+            saveConfig();
+        } else {
+            resources = new ArrayList<>();
+            Set<String> keys = resourcesSection.getKeys(false);
+            for(String key : keys) {
+                Material res = Material.getMaterial(key);
+                BlockData placeholder = Bukkit.createBlockData(resourcesSection.getString(key + ".placeholder", "minecraft:bedrock"));
+                Long cooldown = resourcesSection.getLong(key + ".cooldown");
+
+                resources.add(new ResourceData(res, cooldown, placeholder));
+            }
+        }
 
         if(localeSection != null)
             for(String key : localeSection.getKeys(false))
@@ -129,15 +108,25 @@ public class ReOre extends JavaPlugin {
         }
         databaseManager.createTableLocations().thenAccept(res -> {
             databaseManager.fetchLocations().thenAccept(locs -> {
-                for(Location loc : locs)
-                    ores.put(loc, OreData.EMPTY);
+                for(Location loc : locs) {
+                    ResourceData data = resources.stream().filter(
+                        rd -> loc.getBlock().getType().equals(rd.getResource())
+                    ).findFirst().orElse(null);
+                    if(data == null) {
+                        getLogger().warning("Could not find resource data for block at "
+                        + loc.getBlockX() + " " + loc.getBlockY() + " " + loc.getBlockZ()
+                        + " in world " + loc.getWorld().getName());
+                        continue;
+                    }
+                    registries.put(loc, data);
+                }
             });
         });
     }
 
     public void reload() {
         reloadConfig();
-        cancelTicks(false);
+        tasks.cancelTicks(false);
         loadConfig();
     }
 
@@ -151,17 +140,19 @@ public class ReOre extends JavaPlugin {
         databaseManager = pluginManager.getDatabaseManager();
         loadConfig();
 
-        CommandManager.getInstance().initialize(this);
+        pluginManager.getCommandManager().initialize();
 
         getServer().getPluginManager().registerEvents(new BlockListener(this), this);
         
-        Bukkit.getScheduler().runTaskTimer(this, this::tickOres, 10L, 10L);
+        tasks = new TickResources(registries, cooldowns);
+
+        Bukkit.getScheduler().runTaskTimer(this, tasks::tick, 10L, 10L);
         getLogger().info(getName() + " has been enabled!");
     }
 
     @Override
     public void onDisable() {
-        cancelTicks(true);
+        tasks.cancelTicks(true);
         Bukkit.getScheduler().cancelTasks(this);
         databaseManager.close();
         getLogger().info(getName() + " has been disabled!");

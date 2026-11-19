@@ -63,8 +63,9 @@ public class DatabaseManager {
             } catch(SQLException e) {
                 plugin.getLogger().severe("Could not create locations table\n" + e.getErrorCode() + ": " + e.getMessage());
             }
+
+            result.complete(null);
         });
-        result.complete(null);
         return result;
     }
 
@@ -130,8 +131,8 @@ public class DatabaseManager {
             } catch(SQLException e) {
                 plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
             }
+            result.complete(null);
         });
-        result.complete(null);
         return result;
     }
 
@@ -152,8 +153,8 @@ public class DatabaseManager {
             } catch(SQLException e) {
                 plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
             }
+            result.complete(null);
         });
-        result.complete(null);
         return result;
     }
 
@@ -171,9 +172,8 @@ public class DatabaseManager {
             } catch(SQLException e) {
                 plugin.getLogger().warning("could not remove a location\n"+e.getErrorCode()+": "+e.getMessage());
             }
+            result.complete(null);
         });
-
-        result.complete(null);
         return result;
     }
 
@@ -194,8 +194,8 @@ public class DatabaseManager {
             } catch(SQLException e) {
                 plugin.getLogger().warning("could not add a location\n"+e.getErrorCode()+": "+e.getMessage());
             }
+            result.complete(null);
         });
-        result.complete(null);
         return result;
     }
 

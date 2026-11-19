@@ -5,30 +5,25 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import ru.winxboyz.reore.ReOre;
-import ru.winxboyz.reore.commands.OreCommand;
+import ru.winxboyz.reore.commands.ReOreCommand;
 
 public class CommandManager {
-    private static CommandManager instance;
+    private ReOre plugin;;
     
-    private CommandManager() {}
-
-    public static CommandManager getInstance() {
-        if (instance == null) {
-            instance = new CommandManager();
-        }
-        return instance;
+    public CommandManager(ReOre plugin) {
+        this.plugin = plugin;
     }
 
-    private LiteralCommandNode<CommandSourceStack> oreCommand;
-    public LiteralCommandNode<CommandSourceStack> getOreCommand() {
-        return oreCommand;
+    private LiteralCommandNode<CommandSourceStack> reoreCommand;
+    public LiteralCommandNode<CommandSourceStack> getReoreCommand() {
+        return reoreCommand;
     }
 
-    public void initialize(ReOre plugin) {
-        oreCommand = new OreCommand(plugin).initialize();
+    public void initialize() {
+        reoreCommand = new ReOreCommand(plugin).initialize();
 
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
-            commands.registrar().register(oreCommand);
+            commands.registrar().register(reoreCommand);
         });
     }
 }

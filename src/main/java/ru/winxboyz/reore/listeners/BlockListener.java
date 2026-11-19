@@ -9,14 +9,14 @@ import org.bukkit.inventory.ItemStack;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import ru.winxboyz.reore.ReOre;
-import ru.winxboyz.reore.utils.OreData;
+import ru.winxboyz.reore.utils.ResourceData;
+import ru.winxboyz.reore.utils.TimeMessage;
 
 import java.util.Collection;
-import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -25,8 +25,8 @@ import org.bukkit.event.EventPriority;
 public class BlockListener implements Listener {
 
     private final ReOre plugin;
-    private final Map<Material,Long> timings;
-    private final ConcurrentHashMap<Location,OreData> ores;
+    private final ConcurrentHashMap<Location,ResourceData> registries;
+    private final ConcurrentHashMap<Location,Long> cooldowns;
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onBlockBreak(BlockBreakEvent event) {
@@ -35,9 +35,10 @@ public class BlockListener implements Listener {
         Block block = event.getBlock();
         Location loc = block.getLocation();
         
-        if(!ores.containsKey(loc)) return;
+        if(!registries.containsKey(loc)) return;
 
-        Material blockType = block.getType();
+        ResourceData data = registries.get(loc);
+        if(data == null) return;
 
         int exp = event.getExpToDrop();
 
@@ -46,15 +47,18 @@ public class BlockListener implements Listener {
         ItemStack tool = player.getInventory().getItemInMainHand();
         Collection<ItemStack> drops = block.getDrops(tool,player);
         
-        for(ItemStack drop : drops)
-            player.getInventory().addItem(drop);
+
+        for(ItemStack drop : drops) {
+            HashMap<Integer, ItemStack> leftOvers = player.getInventory().addItem(drop);
+            for(ItemStack item : leftOvers.values())
+                loc.getWorld().dropItem(loc, item);
+        }
         tool.damage(1, player);
         player.giveExp(exp);
-        block.setType(Material.BEDROCK);
+        block.setBlockData(data.getPlaceholder());
 
-        long timing = System.currentTimeMillis() + timings.get(blockType);
-        OreData data = new OreData(blockType, timing);
-        ores.put(loc, data);
+        long cooldown = System.currentTimeMillis() + data.getCooldown();
+        cooldowns.put(loc, cooldown);
     }
 
     @EventHandler
@@ -63,20 +67,21 @@ public class BlockListener implements Listener {
         Block block = event.getClickedBlock();
         
         Location loc = block.getLocation();
-        if(!ores.containsKey(loc)) return;
+        if(!registries.containsKey(loc)) return;
 
-        if(block.getType() == Material.BEDROCK) {
+        if(cooldowns.containsKey(loc)) {
             event.setCancelled(true);
+            int cooldownSeconds = (int) (cooldowns.get(loc) - System.currentTimeMillis()) / 1000;
             event.getPlayer().sendActionBar(
                 Component.text(plugin.getMessages().get("cooldown") + " ").color(NamedTextColor.RED)
-                .append(Component.text(ores.get(loc).toString(plugin.LOCALE())).color(NamedTextColor.AQUA))
+                .append(Component.text(TimeMessage.toString(cooldownSeconds, plugin.LOCALE())).color(NamedTextColor.AQUA))
             );
         }
     }
 
     public BlockListener(ReOre plugin) {
         this.plugin = plugin;
-        this.timings = plugin.getDefaultTimings();
-        this.ores = plugin.getOres();
+        this.registries = plugin.getRegistries();
+        this.cooldowns = plugin.getCooldowns();
     }
 }

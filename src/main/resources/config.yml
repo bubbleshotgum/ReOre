@@ -1,23 +1,42 @@
-timings:
-  COAL_ORE: 300000
-  DEEPSLATE_COAL_ORE: 300000
-  COPPER_ORE: 600000
-  DEEPSLATE_COPPER_ORE: 600000
-  LAPIS_ORE: 900000
-  DEEPSLATE_LAPIS_ORE: 900000
-  REDSTONE_ORE: 900000
-  DEEPSLATE_REDSTONE_ORE: 900000
-  IRON_ORE: 1800000
-  DEEPSLATE_IRON_ORE: 1800000
-  GOLD_ORE: 1800000
-  DEEPSLATE_GOLD_ORE: 1800000
-  DIAMOND_ORE: 3600000
-  DEEPSLATE_DIAMOND_ORE: 3600000
-  EMERALD_ORE: 3600000
-  DEEPSLATE_EMERALD_ORE: 3600000
-  NETHER_QUARTZ_ORE: 300000
-  NETHER_GOLD_ORE: 300000
-  ANCIENT_DEBRIS: 7200000
+resources:
+  COAL_ORE:
+    cooldown: 300000
+  DEEPSLATE_COAL_ORE:
+    cooldown: 300000
+  COPPER_ORE:
+    cooldown: 600000
+  DEEPSLATE_COPPER_ORE:
+    cooldown: 600000
+  LAPIS_ORE:
+    cooldown: 900000
+  DEEPSLATE_LAPIS_ORE:
+    cooldown: 900000
+  REDSTONE_ORE:
+    cooldown: 900000
+  DEEPSLATE_REDSTONE_ORE:
+    cooldown: 900000
+  IRON_ORE:
+    cooldown: 1800000
+  DEEPSLATE_IRON_ORE:
+    cooldown: 1800000
+  GOLD_ORE:
+    cooldown: 1800000
+  DEEPSLATE_GOLD_ORE:
+    cooldown: 1800000
+  DIAMOND_ORE:
+    cooldown: 3600000
+  DEEPSLATE_DIAMOND_ORE:
+    cooldown: 3600000
+  EMERALD_ORE:
+    cooldown: 3600000
+  DEEPSLATE_EMERALD_ORE:
+    cooldown: 3600000
+  NETHER_QUARTZ_ORE:
+    cooldown: 300000
+  NETHER_GOLD_ORE:
+    cooldown: 300000
+  ANCIENT_DEBRIS:
+    cooldown: 7200000
 sql:
   database: reore
   locationsTable: locations
@@ -30,6 +49,7 @@ locales:
     cooldown: Ресурс восстановится через
     in-list: состоит в списке возобновляемых ресурсов
     in-world: в мире
+    no-selection: Вы не выбрали регион WorldEdit
     non: не
     not: не
     now: теперь
@@ -46,6 +66,7 @@ locales:
     cooldown: The node will replenish in
     in-list: in replenishing nodes list
     in-world: in the world
+    no-selection: You have not selected a WorldEdit region
     non: non-
     not: is not
     now: are now

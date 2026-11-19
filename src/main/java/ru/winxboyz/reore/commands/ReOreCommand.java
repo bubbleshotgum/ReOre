@@ -7,7 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -35,18 +34,19 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import ru.winxboyz.reore.ReOre;
 import ru.winxboyz.reore.managers.DatabaseManager;
 import ru.winxboyz.reore.managers.PluginManager;
-import ru.winxboyz.reore.utils.OreData;
+import ru.winxboyz.reore.utils.ResourceData;
 
-public class OreCommand {
+public class ReOreCommand {
 
     private ReOre plugin;
 
-    private ConcurrentHashMap<Location,OreData> ores;
-    private Map<Material,Long> timings;
+    private ConcurrentHashMap<Location,Long> cooldowns;
+    private ConcurrentHashMap<Location,ResourceData> registries;
+    private List<ResourceData> resources;
     private Map<String,String> messages;
 
     private final LiteralArgumentBuilder<CommandSourceStack>
-        ore      = Commands.literal("ore")
+        ore      = Commands.literal("reore")
         .requires(source -> source.getSender().isOp() && source.getSender() instanceof Player),
         add      = Commands.literal("add"),
         remove   = Commands.literal("remove"),
@@ -62,7 +62,7 @@ public class OreCommand {
 
     private void addLocation   (Player player, Location location) {
         World world = player.getWorld();
-        if(ores.containsKey(location)) {
+        if(registries.containsKey(location)) {
             player.sendMessage(Component
                 .text(messages.get("block-with-coordinates") + " ")
                     .append(Component.text(location.blockX() 
@@ -75,9 +75,12 @@ public class OreCommand {
                 .color(NamedTextColor.RED));
             return;
         }
-        else if(!timings.containsKey(location.getBlock().getType()))
+        ResourceData data = resources.stream().filter(
+            rd -> location.getBlock().getType().equals(rd.getResource())
+        ).findFirst().orElse(null);
+        if(data == null)
             return;
-        ores.put(location,OreData.EMPTY);
+        registries.put(location,data);
         databaseManager.addLocation(location);
         player.sendMessage(Component
             .text(messages.get("block-with-coordinates") + " ")
@@ -93,8 +96,12 @@ public class OreCommand {
     }
     private void removeLocation(Player player, Location location) {
         World world = player.getWorld();
-        if(ores.containsKey(location)) {
-            ores.remove(location);
+        if(registries.containsKey(location)) {
+            if(cooldowns.containsKey(location)) {
+                location.getBlock().setType(registries.get(location).getResource());
+                cooldowns.remove(location);
+            }
+            registries.remove(location);
             databaseManager.removeLocation(location);
             player.sendMessage(Component
                 .text(messages.get("block-with-coordinates") + " ")
@@ -135,13 +142,24 @@ public class OreCommand {
             List<Location> locs = new ArrayList<>(0);
             for(BlockVector3 vec3 : region) {
                 Location loc = new Location(world, vec3.x(), vec3.y(), vec3.z()); 
-                if(mode.equals("add") && timings.containsKey(loc.getBlock().getType())) {
-                    ores.put(loc,OreData.EMPTY);
-                    locs.add(loc);
+                ResourceData data = resources.stream().filter(
+                    rd -> loc.getBlock().getType().equals(rd.getResource())
+                ).findFirst().orElse(null);
+                if(mode.equals("add")) { 
+                    if(data != null && !registries.containsKey(loc)) {
+                        registries.put(loc, data);
+                        locs.add(loc);
+                    }
                 }
-                else if(ores.containsKey(loc)) {
-                    ores.remove(loc);
-                    locs.add(loc);
+                else if(mode.equals("remove")) {
+                    if(registries.containsKey(loc)) {
+                        if(cooldowns.containsKey(loc)) {
+                            loc.getBlock().setBlockData(registries.get(loc).getPlaceholder());
+                            cooldowns.remove(loc);
+                        }
+                        registries.remove(loc);
+                        locs.add(loc);
+                    }
                 }
             }
             BlockVector3 min = region.getMinimumPoint(), max = region.getMaximumPoint();
@@ -158,7 +176,12 @@ public class OreCommand {
                 databaseManager.addLocations   (locs);
             else
                 databaseManager.removeLocations(locs);
-        } catch(IncompleteRegionException e) {}
+        }
+        catch(IncompleteRegionException e) {}
+        catch(NullPointerException e) {
+            player.sendMessage(Component.text(messages.get("no-selection")).color(NamedTextColor.RED));
+        }
+
         return Command.SINGLE_SUCCESS;
     }
 
@@ -238,10 +261,11 @@ public class OreCommand {
         return builder.build();
     }
 
-    public OreCommand(ReOre plugin) {
+    public ReOreCommand(ReOre plugin) {
         this.plugin = plugin;
-        ores = plugin.getOres();
-        timings = plugin.getDefaultTimings();
+        cooldowns = plugin.getCooldowns();
+        resources = plugin.getResources();
+        registries = plugin.getRegistries();
         messages = plugin.getMessages();
     }
 }
